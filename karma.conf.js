@@ -1,91 +1,59 @@
 // Karma configuration
 // Generated on Sat Jan 28 2017 19:40:10 GMT-0300 (BRT)
+const { execSync } = require('child_process');
 
-var builder = require("./tools/browser-build.js");
+const allowed = `?(${execSync('ls packages', { encoding: 'utf8' })
+  .trim()
+  .split('\n')
+  .join('|')})`;
 
-module.exports = function (config) {
-    config.set({
+module.exports = function(config) {
+  config.set({
+    browserDisconnectTimeout: 25000,
+    browserNoActivityTimeout: 25000,
 
-        browserDisconnectTimeout: 25000,
-        browserNoActivityTimeout: 25000,
+    // frameworks to use
+    // available frameworks: https://npmjs.org/browse/keyword/karma-adapter
+    frameworks: ['browserify', 'mocha'],
 
-        // base path that will be used to resolve all patterns (eg. files, exclude)
-        basePath: "",
+    browserify: {
+      debug: true,
+      transform: ['babelify']
+    },
 
-        // frameworks to use
-        // available frameworks: https://npmjs.org/browse/keyword/karma-adapter
-        frameworks: ["mocha"],
+    preprocessors: {
+      [`packages/${allowed}/test/**/*.js`]: 'browserify'
+    },
 
-        // list of files / patterns to load in the browser
-        files: [
-            "*.js",
-            process.env.TEST || "test/*.test.js",
-            "test/test-helper.js",
-            {pattern: "test/samples/**/*", watched: false, included: false, served: true},
-            {pattern: "fonts/open-sans/**/*", watched: false, included: false, served: true}
-        ],
+    // list of files / patterns to load in the browser
+    files: [
+      `./packages/${allowed}/test/**/*.test.js`,
+      {
+        pattern: 'packages/**/test/images/**/*',
+        watched: false,
+        included: false,
+        served: true
+      },
+      {
+        pattern: 'packages/plugin-print/fonts/**/*',
+        watched: false,
+        included: false,
+        served: true
+      }
+    ],
 
-        // list of files to exclude
-        exclude: [],
+    proxies: {
+      '/packages/plugin-print/fonts/': '/base/packages/plugin-print/fonts/'
+    },
 
-        // preprocess matching files before serving them to the browser
-        // available preprocessors: https://npmjs.org/browse/keyword/karma-preprocessor
-        preprocessors: {
-            "*": "generic",
-            "*/*": "generic"
-        },
+    // level of logging
+    // possible values: config.LOG_DISABLE || config.LOG_ERROR || config.LOG_WARN || config.LOG_INFO || config.LOG_DEBUG
+    logLevel: config.LOG_INFO,
 
-        genericPreprocessor: {
-            rules: [{
-                // Default generic processor
-                process: function (content, file, done, log) {
-                    log.debug("File "+ file.path +" should be in another bundle.");
-                    done("/* File "+ file.path +" should be in another bundle */");
-                }
-            }, {
-                match: "index.js",
-                process: function (content, file, done, log) {
-                    log.debug("Bundle Jimp.");
-                    builder.bundleSimple(file.path, {}, done);
-                }
-            }, {
-                match: "test/*.test.js",
-                process: function (content, file, done, log) {
-                    log.debug("Bundle Test "+ file.path +".");
-                    builder.bundleSimple(file.path, {exclude: ["index.js"]}, done);
-                }
-            }]
-        },
+    // start these browsers
+    // available browser launchers: https://npmjs.org/browse/keyword/karma-launcher
+    browsers: ['Firefox', 'Chrome'],
 
-        // test results reporter to use
-        // possible values: "dots", "progress"
-        // available reporters: https://npmjs.org/browse/keyword/karma-reporter
-        reporters: ["mocha-own"],
-        // mochaOwnReporter: { reporter: "nyan" },
-
-        // web server port
-        port: 9876,
-
-        // enable / disable colors in the output (reporters and logs)
-        colors: true,
-
-        // level of logging
-        // possible values: config.LOG_DISABLE || config.LOG_ERROR || config.LOG_WARN || config.LOG_INFO || config.LOG_DEBUG
-        logLevel: config.LOG_INFO,
-
-        // enable / disable watching file and executing tests whenever any file changes
-        autoWatch: true,
-
-        // start these browsers
-        // available browser launchers: https://npmjs.org/browse/keyword/karma-launcher
-        browsers: ["Firefox", "Chrome"],
-
-        // Continuous Integration mode
-        // if true, Karma captures browsers, runs the tests and exits
-        singleRun: false,
-
-        // Concurrency level
-        // how many browser should be started simultaneous
-        concurrency: Infinity
-    })
-}
+    reporters: ['mocha']
+  });
+};
