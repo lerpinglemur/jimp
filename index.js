@@ -1283,18 +1283,37 @@ Jimp.prototype.mask = function (src, x, y, cb) {
  * @param (optional) cb a callback for when complete
  * @returns this for chaining of methods
 */
-Jimp.prototype.composite = function (src, x, y, cb) {
+Jimp.prototype.composite = function (src, x, y, srcx, srcy, srcw, srch, cb) {
     if (!(src instanceof Jimp))
         return throwError.call(this, "The source must be a Jimp image", cb);
     if (typeof x !== "number" || typeof y !== "number")
         return throwError.call(this, "x and y must be numbers", cb);
+    if (typeof srcx === "function") {
+        cb = srcx;
+        srcx = 0;
+        srcy = 0;
+        srcw = src.bitmap.width;
+        srch = src.bitmap.height;
+    } else if (typeof srcx === typeof srcy && typeof srcy === typeof srcw && typeof srcw === typeof srch) {
+        srcx = srcx || 0;
+        srcy = srcy || 0;
+        srcw = srcw || src.bitmap.width;
+        srch = srch || src.bitmap.height;
+    } else {
+        return throwError.call(this, "srcx, srcy, srcw, srch must be numbers", cb);
+    }
 
     // round input
     x = Math.round(x);
     y = Math.round(y);
 
+    srcx = Math.round(srcx);
+    srcy = Math.round(srcy);
+    srcw = Math.round(srcw);
+    srch = Math.round(srch);
+
     var that = this;
-    src.scanQuiet(0, 0, src.bitmap.width, src.bitmap.height, function (sx, sy, idx) {
+    src.scanQuiet(srcx, srcy, srcw, srch, function (sx, sy, idx) {
         // http://stackoverflow.com/questions/7438263/alpha-compositing-algorithm-blend-modes
         var dstIdx = that.getPixelIndex(x+sx, y+sy);
 
@@ -2731,14 +2750,21 @@ function drawCharacter (image, font, x, y, char) {
 }
 
 function measureText (font, text) {
+
     var x = 0;
-    for (let i = 0; i < text.length; i++) {
-        if (font.chars[text[i]]) {
-            x += font.chars[text[i]].xoffset +
-            (font.kernings[text[i]] && font.kernings[text[i]][text[i+1]]
-                ? font.kernings[text[i]][text[i+1]] : 0) +
-            (font.chars[text[i]].xadvance || 0);
+    var len = text.length;
+    var txt;
+    for (let i = 0; i < len; i++) {
+
+        txt = text[i];
+
+        if (font.chars[txt] ) {
+            x += font.chars[txt].xoffset +
+            (font.kernings[txt] && font.kernings[txt][text[i+1]]
+                ? font.kernings[txt][text[i+1]] : 0) +
+            (font.chars[txt].xadvance || 0);
         }
+
     }
 
     return x;
@@ -2749,7 +2775,8 @@ function measureTextHeight (font, text, maxWidth) {
     var line = '';
     var textTotalHeight = font.common.lineHeight;
 
-    for (let n = 0; n < words.length; n++) {
+    var len = words.length;
+    for (let n = 0; n < len; n++) {
         let testLine = line + words[n] + ' ';
         let testWidth = measureText(font, testLine);
 
@@ -2777,7 +2804,7 @@ Jimp.prototype.write = function (path, cb) {
     if (typeof path !== "string")
         return throwError.call(this, "path must be a string", cb);
     if (typeof cb === "undefined") cb = function () {};
-    if (typeof cb !== "function")
+    else if (typeof cb !== "function")
         return throwError.call(this, "cb must be a function", cb);
 
     var that = this;
